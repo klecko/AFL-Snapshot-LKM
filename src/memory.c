@@ -482,14 +482,15 @@ void recover_memory_snapshot(struct task_data *data) {
   struct mm_struct *    mm = data->tsk->mm;
   pte_t *               pte, entry;
   int                   i;
+  int total = 0, dirty = 0;
 
   if (data->config & AFL_SNAPSHOT_MMAP) munmap_new_vmas(data);
 
   hash_for_each(data->ss.ss_page, i, sp, next) {
-
+    total++;
     if (sp->dirty &&
         sp->has_been_copied) {  // it has been captured by page fault
-
+      dirty++;
       do_recover_page(sp);  // copy old content
       sp->has_had_pte = true;
 
@@ -525,7 +526,7 @@ void recover_memory_snapshot(struct task_data *data) {
     }
 
   }
-
+  SAYF("Recovered %d/%d (%f %%)\n", dirty, total, ((float)dirty)/total);
 }
 
 void clean_snapshot_vmas(struct task_data *data) {
