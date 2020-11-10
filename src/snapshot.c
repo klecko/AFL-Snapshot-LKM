@@ -34,6 +34,8 @@ void initialize_snapshot(struct task_data *data, int config) {
   // copy current brk
   data->ss.oldbrk = current->mm->brk;
 
+  INIT_LIST_HEAD(&data->ss.ss_page_dirty);
+
 }
 
 int take_snapshot(int config) {

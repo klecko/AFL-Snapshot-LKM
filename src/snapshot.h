@@ -123,6 +123,7 @@ struct snapshot_page {
   bool dirty;
 
   struct hlist_node next;
+  struct list_head  next_dirty;
 
 };
 
@@ -178,7 +179,7 @@ struct snapshot {
   struct pt_regs regs;
 
   DECLARE_HASHTABLE(ss_page, SNAPSHOT_HASHTABLE_SZ);
-
+  struct list_head ss_page_dirty;
 };
 
 #define SNAPSHOT_NONE 0x00000000  // outside snapshot

@@ -462,6 +462,7 @@ void do_recover_page(struct snapshot_page *sp) {
   if (copy_to_user((void __user *)sp->page_base, sp->page_data, PAGE_SIZE) != 0)
     DBG_PRINT("incomplete copy_to_user\n");
   sp->dirty = false;
+  list_del(&sp->next_dirty);
 
 }
 
@@ -486,12 +487,13 @@ void recover_memory_snapshot(struct task_data *data) {
 
   if (data->config & AFL_SNAPSHOT_MMAP) munmap_new_vmas(data);
 
-  hash_for_each(data->ss.ss_page, i, sp, next) {
+  //hash_for_each(data->ss.ss_page, i, sp, next) {
+  list_for_each_entry_safe(sp, prev_sp, &data->ss.ss_page_dirty, next_dirty) {
     total++;
     if (sp->dirty &&
         sp->has_been_copied) {  // it has been captured by page fault
       dirty++;
-      do_recover_page(sp);  // copy old content
+      do_recover_page(sp);  // copy old content, deletes sp from dirty list
       sp->has_had_pte = true;
 
       pte = walk_page_table(sp->page_base);
@@ -511,7 +513,7 @@ void recover_memory_snapshot(struct task_data *data) {
 
       }
 
-    } else if (is_snapshot_page_private(sp)) {
+    } /* else if (is_snapshot_page_private(sp)) {
 
       // private page that has not been captured
       // still write protected
@@ -523,10 +525,10 @@ void recover_memory_snapshot(struct task_data *data) {
       set_snapshot_page_none_pte(sp);
       sp->has_had_pte = false;
 
-    }
+    } */
 
   }
-  SAYF("Recovered %d/%d (%f %%)\n", dirty, total, ((float)dirty)/total);
+  SAYF("Recovered %d/%d\n", dirty, total);
 }
 
 void clean_snapshot_vmas(struct task_data *data) {
@@ -629,6 +631,7 @@ int wp_page_hook(struct kprobe *p, struct pt_regs *regs) {
   if (ss_page->dirty) return 0;
 
   ss_page->dirty = true;
+  list_add(&ss_page->next_dirty, &data->ss.ss_page_dirty);
 
   DBG_PRINT("wp_page_hook 0x%08lx", vmf->address);
 
